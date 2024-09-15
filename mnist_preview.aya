@@ -1,0 +1,27 @@
+import ::viewmat
+
+{images::list labels::list : idx cvs(0) keys pressed_enter done(0) viewmat^,
+    {
+        cvs 0 =! {cvs.close} ?
+        labelsE Q :idx;
+        labels .[idx] :P
+        images .[idx] viewmat :cvs;
+        cvs.show
+
+        .# Poll for keboard input
+        0 :pressed_enter;
+        {
+            cvs.pressed_keys :keys;
+            keys E 0 > {
+                keys {.keycode 10 =} O {*}% :pressed_enter;
+                keys {.keycode 81 =} O {*}% {
+                    "done" :P
+                    1 :done;
+                } ?
+            } ?
+            10:Z
+        pressed_enter! done! &} W
+
+    done!} W
+}:preview_images;
+

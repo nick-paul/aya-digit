@@ -1,0 +1,37 @@
+import ::plot
+import ::json
+
+"training.json" json.load :training;
+
+plot.multiplot! :mplt;
+"Training Results" mplt.:suptitle;
+
+.# Accuracy Plot
+plot.plot! :plt;
+"Training Accuracy" plt.:title;
+
+.# We only sampled validation accuracy every 250 iterations
+training.val_accuraciesE.R 250* training.val_accuracies
+    {, "orange":color 3:stroke "Validation Accuracy":label } plt.plot
+
+training.accuraciesE.R training.accuracies
+    {, "Accuracy":label; } plt.plot
+
+plt mplt.add
+
+.# Loss Plot
+plot.plot! :plt;
+
+training.lossesE.R training.losses
+    {, "green":color "Loss":label; } plt.plot
+
+plt mplt.add
+
+mplt.view
+
+"Final accuracy on validation set: $(training.val_accuracies.[-1] 100*)%" :P
+
+"Press enter to quit..":P:R;
+
+
+

@@ -1,0 +1,24 @@
+import ::io
+
+28 :image_size; 
+
+{fname::str : fileutils^ image_size^,
+    fname fileutils.readallbytes .E 8 - .> :0xff &
+}:read_labels;
+
+{fname::str : fileutils^ image_size^, 
+    fname fileutils.readallbytes .E :0x10 - .> :0xff &
+    .E image_size image_size * / [1| image_size image_size] L
+}:read_images;
+
+{: image_size^ read_images^ read_labels^,
+
+    {,
+        .# Images
+        "data/t10k-images.idx3-ubyte" read_images :test_images;
+        "data/train-images.idx3-ubyte" read_images :train_images;
+        .# Labels
+        "data/train-labels.idx1-ubyte" read_labels :train_labels;
+        "data/t10k-labels.idx1-ubyte"  read_labels :test_labels;
+    }
+} :load_mnist;

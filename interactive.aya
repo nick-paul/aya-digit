@@ -1,0 +1,70 @@
+import ::json
+import ::canvas
+import ::time
+import ::color
+
+import ::mnist_loader
+from ::nn_functions import [
+    ::sigmoid
+    ::d_sigmoid
+    ::softmax
+    ::d_softmax
+]
+
+.# Load our model
+"Loading Model..." :P
+"model.json" json.load :model;
+
+.# Create the drawing canvas
+16 :scale;
+{, 
+    mnist_loader.image_size :width;
+    mnist_loader.image_size :height;
+    scale :scale;
+} canvas! :cvs;
+
+cvs.show
+
+.# Utility function for clearing to black canvas
+{
+    color.colors.black cvs.set_color
+    0 0 cvs.width cvs.height cvs.fillrect
+}:clear;
+clear
+
+"Ready" :P
+"Click to draw, right click to clear" :P
+"Current Classification:   " .P
+
+60 time.rate! :limiter;
+{
+    .# Canvas input
+    cvs.pressed_buttons       :mouse_buttons;
+    cvs.mouse_pos scale /     :mouse_pos;
+    cvs.pressed_keys#.keycode :keys;
+
+    .# Right click? Clear canvas
+    mouse_buttons 3 H { clear } ?
+
+    .# Left Click? Draw
+    mouse_buttons 1 H {
+        color.colors.white cvs.set_color
+        mouse_pos.x mouse_pos.y 1.25 cvs.fillcircle
+    } ?
+
+    .# Get pixels from canvas
+    cvs.get_pixels :img;
+    img.pixels :0xff & #.max :x;
+
+    .# Run model
+    [x.F] model.layer_a :{la.mul} sigmoid model.layer_b :{la.mul} .# :&:P 
+    #.argmax .[0] :res;
+
+    .# Delete previous classification and print new one
+    "\b\b" .P
+    res .P ' .P
+
+    cvs.show
+    limiter.sleep
+    cvs.isopen
+} W

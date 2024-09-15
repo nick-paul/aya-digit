@@ -1,0 +1,5 @@
+.# Functions
+{-1 * Me 1+ 1\/}:sigmoid;
+{sigmoid :& 1\- *} :d_sigmoid;
+{:& .F.max - Me :& W /}:softmax;
+{softmax :& 1 \- *} :d_softmax;

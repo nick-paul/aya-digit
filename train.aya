@@ -1,0 +1,152 @@
+import ::viewmat
+import ::plot
+import ::stats
+import ::json
+from ::la import ::dot
+
+import ::mnist_preview
+import ::mnist_loader
+import ::nn_functions
+from ::nn_functions import [
+    ::sigmoid
+    ::d_sigmoid
+    ::softmax
+    ::d_softmax
+]
+
+.# Configuration
+0.001  :lr;
+10000  :epochs;
+10000  :n_val;
+128    :hidden_size;
+128    :batch;
+
+.### Load MNIST Data
+"Loading data..." :P
+mnist_loader.image_size :image_size;
+mnist_loader.load_mnist :mnist;
+
+.# Shuffle training data
+[mnist.train_images mnist.train_labels, {a b, {,a:x b:y}}] .shuffle :shuffled;
+shuffled #.x :train_images;
+shuffled #.y :train_labels;
+
+.# Split into train/test/val sets
+.# Validation Set: first n_val
+train_images n_val .< :x_val;
+train_labels n_val .< :y_val;
+.# Train Set: all but first n_val
+train_images n_val -1* .> :x_train;
+train_labels n_val -1* .> :y_train;
+.# Test Set
+mnist.test_images  :x_test;
+mnist.test_labels  :y_test;
+
+.# Uncomment for interactive preview
+.# x_val y_val mnist_preview.preview_images
+.# train_images train_labels mnist_preview.preview_images
+
+.# Initialize random weights
+{x::num y::num, .# -> list
+    0 [x y] L {;.Q2*1-} .O x y * .^ /
+}:init;
+
+.# Create layers
+(image_size image_size*, hidden_size) init :layer_a;
+(hidden_size , 10) init :layer_b;
+
+.# Print shape of all components
+"x_train: $(x_train :E)" :P
+"y_train: $(y_train :E)" :P
+"x_val:   $(x_val   :E)" :P
+"y_val:   $(y_val   :E)" :P
+"x_test:  $(x_test  :E)" :P
+"y_test:  $(y_test  :E)" :P
+"layer_a: $(layer_a  :E)" :P
+"layer_b: $(layer_b  :E)" :P
+
+{x y :
+    .# locals
+    targets out error
+    x_layer_a x_layer_b
+    x_sigmoid
+    update_layer_a update_layer_b
+    ,
+
+    .# targets = np.zeros((len(y), 10))
+    0 [yE 10] L :targets;
+    .# targets[range(targets.shape[0]),y] = 1
+    targets y {l i, 1 l.:[i]} .& :targets;
+
+    x layer_a dot :x_layer_a;
+    x_layer_a sigmoid   :x_sigmoid;
+    x_sigmoid layer_b dot :x_layer_b;
+    x_layer_b softmax :out;
+
+    out targets - 2 * out:E.[0] / x_layer_b d_softmax * :error;
+    x_sigmoid.T error dot :update_layer_b;
+
+    layer_b error.T dot .T x_layer_a d_sigmoid * :error;
+    x.T error dot :update_layer_a;
+
+    out update_layer_a update_layer_b
+}:forward_and_backward_pass;
+
+.# Flatten validation dataset here so
+.# we don't have to do it everytime in the loop
+x_val #.F :x_val;
+
+{
+    []:accuracies;
+    []:losses;
+    []:val_accuracies;
+    0 :val_acc;
+
+    epochs .R :# {epoch,
+
+        [batch ,; x_trainE Q] :sample_idxs;
+        x_train.[sample_idxs] :x;
+        y_train.[sample_idxs] :y;
+
+        x #.F :x;
+
+        x y forward_and_backward_pass :update_layer_b; :update_layer_a; :out;
+
+        out #.argmax :category;
+        category y .= stats.mean :accuracy;
+        accuracy accuracies.B;
+
+        category y - 2 ^ stats.mean :loss;
+        loss losses.B;
+
+        layer_a lr update_layer_a * - :layer_a;
+        layer_b lr update_layer_b * - :layer_b;
+
+        epoch 250 :% 0 = {
+            "Updating validation..." :P
+            x_val layer_a dot sigmoid layer_b dot softmax #.argmax :val_out;
+            val_out y_val .= stats.mean :val_acc;
+            val_acc val_accuracies.B;
+        } ?
+
+        epoch 1 :% 0 = {
+          "Epoch $epoch, accuracy=$accuracy, val_acc=$val_acc, loss=$loss" :P
+
+        } ?
+    };
+
+    .# Save training data
+    {,
+        accuracies:accuracies;
+        val_accuracies:val_accuracies;
+        losses:losses;
+        .# Params
+        lr:lr; epochs:epochs; hidden_size:hidden_size; batch:batch;
+    } "training.json" json.dump
+
+    .# Save model
+    {, layer_a:layer_a; layer_b:layer_b; } "model.json" json.dump
+
+} :train;
+
+train
