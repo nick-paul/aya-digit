@@ -54,7 +54,8 @@ clear
 
     .# Get pixels from canvas
     cvs.get_pixels :img;
-    img.pixels :0xff & #.max :x;
+    .# Black and white image, just read one channel
+    img.channels.[0] :x;
 
     .# Run model
     [x.F] model.layer_a :{la.mul} sigmoid model.layer_b :{la.mul} .# :&:P 
